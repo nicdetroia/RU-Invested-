@@ -38,7 +38,7 @@ BASE_MAJORS = {
 # --- UI CONFIG ---
 st.set_page_config(page_title="The Rutgers Major ROI Calculator", layout="wide")
 
-# Initialize session state for parsed data
+# ---- SESSION STATE INIT ----
 if "parsed_internships" not in st.session_state:
     st.session_state["parsed_internships"] = []
 if "parsed_certs" not in st.session_state:
@@ -46,24 +46,51 @@ if "parsed_certs" not in st.session_state:
 if "parsed_volunteering" not in st.session_state:
     st.session_state["parsed_volunteering"] = []
 
-# Custom CSS (fix transparency + give clean white card look)
+# --- GLOBAL CSS (FIX FORMATTING / TRANSPARENCY) ---
 st.markdown("""
     <style>
+    /* Force light styling in main content even if user runs dark theme */
+    :root {
+        color-scheme: light;
+    }
+
+    html, body,
+    [data-testid="stAppViewContainer"],
     .main, .block-container {
         background-color: #ffffff !important;
+        color: #111111 !important;
     }
 
+    /* Sidebar: dark theme */
     div[data-testid="stSidebar"] {
-        background-color: #f5f5f5 !important;
+        background-color: #111827 !important;  /* slate-ish */
+        color: #f9fafb !important;
+    }
+    div[data-testid="stSidebar"] * {
+        color: #f9fafb !important;
     }
 
+    /* Make headings, labels, markdown clearly visible */
+    h1, h2, h3, h4, h5, h6,
+    p, label, span,
+    [data-testid="stMarkdownContainer"],
+    [data-testid="stMarkdownContainer"] * {
+        color: #111111 !important;
+    }
+
+    /* File uploader + text area readable */
+    .stTextArea textarea, .stTextInput input {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+    }
+
+    /* Metric cards */
     [data-testid="stMetric"] {
         background-color: #ffffff !important;
         border: 1px solid #cc0033;
         border-radius: 10px;
         padding: 15px;
     }
-
     [data-testid="stMetricValue"] {
         color: #cc0033 !important;
         font-weight: bold;
@@ -71,10 +98,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- TITLE ---
 st.title("🛡️ The Rutgers Major ROI Calculator")
-st.write("v5.0 | 2025-26 Academic Year Data | Major + Experience + Side Income + Resume Import")
+st.write("v5.1 | 2025-26 Academic Year Data | Major + Experience + Side Income + Resume Import")
 
-# --- SIDEBAR: RUTGERS PROFILE ---
+# --- SIDEBAR: PROFILE / COSTS ---
 with st.sidebar:
     st.header("🏫 University Profile")
     residency = st.radio("Residency Status", ["NJ Resident", "Out-of-State"])
@@ -99,9 +127,9 @@ with st.sidebar:
     st.header("💸 Financial Aid")
     income_bracket = st.select_slider("Family Income Bracket", 
                                       options=[
-                                          "<$65k (Scarlet Guarantee)", 
-                                          "$65k-$100k", 
-                                          "$100k-$150k", 
+                                          "<$65k (Scarlet Guarantee)",
+                                          "$65k-$100k",
+                                          "$100k-$150k",
                                           ">$150k"
                                       ])
     scholarships = st.number_input("Annual Scarlet Promise/Merit Aid ($)", 0, 30000, 2000, step=500)
@@ -130,7 +158,6 @@ def extract_text_from_file(uploaded_file):
             for page in pdf.pages:
                 text += page.extract_text() or ""
         return text
-    # fallback
     try:
         return uploaded_file.read().decode("utf-8", errors="ignore")
     except Exception:
@@ -138,7 +165,6 @@ def extract_text_from_file(uploaded_file):
 
 def guess_tier_from_line(line: str) -> str:
     line_lower = line.lower()
-    # dumb but effective name-based heuristics
     top_keywords = ["google", "meta", "amazon", "microsoft", "goldman", "j.p. morgan", "jp morgan",
                     "citadel", "hft", "stripe", "quant", "faang"]
     big4_keywords = ["deloitte", "pwc", "pricewaterhouse", "ey ", "ernst & young", "kpmg"]
@@ -153,12 +179,6 @@ def guess_tier_from_line(line: str) -> str:
     return "Campus / Local"
 
 def parse_resume_text(text: str):
-    """
-    Very rough heuristic parser to auto-fill:
-    - internships (experience-like lines)
-    - certifications
-    - volunteering / leadership
-    """
     internships = []
     certs = []
     volunteering = []
@@ -188,25 +208,18 @@ def parse_resume_text(text: str):
 
         # Experience
         if section == "exp":
-            # Skip random bullets that are clearly not job headers
             if len(line) < 10:
                 continue
-            # crude split: Company – Role or Company | Role
             if " - " in line:
                 parts = line.split(" - ", 1)
             elif " | " in line:
                 parts = line.split(" | ", 1)
             else:
                 parts = [line, ""]
-
             company = parts[0].strip()
             role = parts[1].strip() if len(parts) > 1 else ""
             tier = guess_tier_from_line(line)
-            internships.append({
-                "company": company,
-                "role": role,
-                "tier": tier
-            })
+            internships.append({"company": company, "role": role, "tier": tier})
             continue
 
         # Certifications
@@ -220,29 +233,23 @@ def parse_resume_text(text: str):
         if section == "vol":
             if len(line) < 4:
                 continue
-            # crude split again
             if " - " in line:
                 parts = line.split(" - ", 1)
             elif " | " in line:
                 parts = line.split(" | ", 1)
             else:
                 parts = [line, ""]
-
             org = parts[0].strip()
             title = parts[1].strip() if len(parts) > 1 else ""
-            volunteering.append({
-                "org": org,
-                "title": title,
-                "level": "Member / Volunteer"
-            })
+            volunteering.append({"org": org, "title": title, "level": "Member / Volunteer"})
 
     return internships, certs, volunteering
 
-# --- EXPERIENCE INPUTS (MAIN AREA) ---
-
+# --- MAIN LAYOUT: LEFT (import + experience) / RIGHT (settings) ---
 left, right = st.columns([2.2, 0.8])
 
 with left:
+    # ----- IMPORT -----
     st.subheader("🔗 Import from LinkedIn / Resume (Optional)")
 
     uploaded_file = st.file_uploader(
@@ -266,19 +273,21 @@ with left:
         
         if raw_text:
             ints, cs, vols = parse_resume_text(raw_text)
-            # Store in session_state so widgets can read them
             st.session_state["parsed_internships"] = ints
             st.session_state["parsed_certs"] = cs
             st.session_state["parsed_volunteering"] = vols
-            st.success(f"Parsed {len(ints)} experiences, {len(cs)} certifications, {len(vols)} volunteer roles.")
+            st.success(
+                f"Parsed {len(ints)} experiences, {len(cs)} certifications, {len(vols)} volunteer roles."
+            )
 
+    # ----- EXPERIENCE MANUAL / EDITABLE -----
     st.subheader("📈 Experience & Career Capital")
 
     # Internships & Work Experience
     st.markdown("**Internships & Work Experience**")
     internship_tiers = [
-        "Campus / Local", 
-        "Regional / Statewide", 
+        "Campus / Local",
+        "Regional / Statewide",
         "Fortune 500 / Big 4",
         "Top Tech / Quant / Tier-1"
     ]
@@ -423,11 +432,11 @@ def compute_experience_boost(internships, certs, volunteering):
     for v in volunteering:
         boost += leadership_weights.get(v.get("level"), 0.0)
 
-    boost = min(boost, 0.60)  # max +60% boost
-    return boost
+    return min(boost, 0.60)  # cap at +60%
 
-# --- CALCULATION ENGINE ---
+# --- CORE CALC ENGINE ---
 def calculate_rutgers_roi():
+    # yearly costs
     tuition = RUTGERS_COSTS["Tuition"][residency]
     fees = RUTGERS_COSTS["Mandatory Fees"]
     room_board = RUTGERS_COSTS["Housing"][housing] + RUTGERS_COSTS["Meal Plan"][meal_plan]
@@ -441,8 +450,9 @@ def calculate_rutgers_roi():
 
     gross_cost = tuition_net + fees + room_board
     total_yearly_cost = max(gross_cost - scholarships - side_income, 0)
-    total_4yr_debt = total_yearly_cost * 4
+    total_4yr_cost = total_yearly_cost * 4
 
+    # major stats
     if major_choice == "Custom Major / Input My Own":
         stats = custom_major_params
         major_label = "Custom Major"
@@ -452,30 +462,30 @@ def calculate_rutgers_roi():
 
     exp_boost = compute_experience_boost(internships, certs, volunteering)
 
+    # Monte Carlo
     npv_results = []
 
     for _ in range(sims):
-        start = np.random.normal(stats['base'], stats['base'] * stats['risk'])
+        start = np.random.normal(stats["base"], stats["base"] * stats["risk"])
         start = max(start * (1 + exp_boost), 0)
 
         career_cashflow = 0
         current_sal = start
 
         for y in range(time_horizon):
-            take_home = current_sal * 0.75
+            take_home = current_sal * 0.75  # crude after-tax factor
             career_cashflow += take_home / ((1 + discount_rate) ** y)
-            current_sal *= (1 + stats['growth'])
+            current_sal *= (1 + stats["growth"])
 
-        npv_results.append(career_cashflow - total_4yr_debt)
+        npv_results.append(career_cashflow - total_4yr_cost)
 
-    return np.array(npv_results), total_4yr_debt, major_label, exp_boost, total_yearly_cost
+    return np.array(npv_results), total_4yr_cost, major_label, exp_boost, total_yearly_cost
 
 # --- RUN MODEL ---
 results, debt, major_label, exp_boost, yearly_cost = calculate_rutgers_roi()
 
-# --- TOP METRICS ---
+# --- METRICS ---
 c1, c2, c3, c4 = st.columns(4)
-
 with c1:
     st.metric("Estimated Net Cost per Year", f"${int(yearly_cost):,}")
 with c2:
@@ -484,15 +494,12 @@ with c3:
     median_gain = int(np.median(results))
     st.metric(f"Median {time_horizon}-Year Net Gain", f"${median_gain:,}")
 with c4:
-    if debt <= 0:
-        roi_text = "Debt-Free"
-    else:
-        roi_text = f"{round(np.median(results) / debt, 2)}x"
+    roi_text = "Debt-Free" if debt <= 0 else f"{round(np.median(results) / debt, 2)}x"
     st.metric("ROI Efficiency", roi_text)
 
 st.divider()
 
-# --- SUMMARY TABLE ---
+# --- SNAPSHOT TABLE ---
 summary_df = pd.DataFrame({
     "Category": [
         "Residency",
@@ -518,7 +525,7 @@ st.table(summary_df)
 
 st.divider()
 
-# --- DISTRIBUTION CHART ---
+# --- DISTRIBUTION PLOT ---
 fig = go.Figure()
 fig.add_trace(go.Violin(
     x=results,
