@@ -46,61 +46,93 @@ if "parsed_certs" not in st.session_state:
 if "parsed_volunteering" not in st.session_state:
     st.session_state["parsed_volunteering"] = []
 
-# --- GLOBAL CSS (FIX FORMATTING / TRANSPARENCY) ---
+# --- GLOBAL CSS: BLACK / WHITE / RUTGERS RED ---
 st.markdown("""
     <style>
-    /* Force light styling in main content even if user runs dark theme */
-    :root {
-        color-scheme: light;
-    }
-
+    /* Global background + text */
     html, body,
     [data-testid="stAppViewContainer"],
     .main, .block-container {
-        background-color: #ffffff !important;
-        color: #111111 !important;
+        background-color: #050505 !important;
+        color: #f9fafb !important;
     }
 
-    /* Sidebar: dark theme */
+    /* Sidebar: slightly lighter black */
     div[data-testid="stSidebar"] {
-        background-color: #111827 !important;  /* slate-ish */
+        background-color: #0b0b0b !important;
         color: #f9fafb !important;
     }
     div[data-testid="stSidebar"] * {
         color: #f9fafb !important;
     }
 
-    /* Make headings, labels, markdown clearly visible */
+    /* All text in main area white by default */
     h1, h2, h3, h4, h5, h6,
     p, label, span,
     [data-testid="stMarkdownContainer"],
     [data-testid="stMarkdownContainer"] * {
-        color: #111111 !important;
+        color: #f9fafb !important;
     }
 
-    /* File uploader + text area readable */
-    .stTextArea textarea, .stTextInput input {
-        background-color: #ffffff !important;
-        color: #111111 !important;
+    /* Inputs */
+    .stTextArea textarea,
+    .stTextInput input {
+        background-color: #111111 !important;
+        color: #f9fafb !important;
+        border-radius: 6px;
+        border: 1px solid #374151 !important;
+    }
+
+    .stNumberInput input,
+    .stSlider,
+    .stSelectbox,
+    .stRadio {
+        color: #f9fafb !important;
     }
 
     /* Metric cards */
     [data-testid="stMetric"] {
-        background-color: #ffffff !important;
+        background-color: #0b0b0b !important;
         border: 1px solid #cc0033;
         border-radius: 10px;
         padding: 15px;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #e5e7eb !important;
     }
     [data-testid="stMetricValue"] {
         color: #cc0033 !important;
         font-weight: bold;
     }
+
+    /* Buttons */
+    .stButton button {
+        background-color: #cc0033 !important;
+        color: #f9fafb !important;
+        border-radius: 8px;
+        border: none;
+    }
+    .stButton button:hover {
+        background-color: #e00036 !important;
+    }
+
+    /* Tables */
+    .stTable, .stTable table {
+        color: #f9fafb !important;
+        background-color: #050505 !important;
+    }
+    .stTable tbody tr:nth-child(even) {
+        background-color: #111111 !important;
+    }
+    .stTable tbody tr:nth-child(odd) {
+        background-color: #050505 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # --- TITLE ---
-st.title("🛡️ The Rutgers Major ROI Calculator")
-st.write("v5.1 | 2025-26 Academic Year Data | Major + Experience + Side Income + Resume Import")
+st.title("🛡️ Rutgers Major ROI Calculator")
+st.write("v6.0 | Pure black & white with Rutgers red highlights")
 
 # --- SIDEBAR: PROFILE / COSTS ---
 with st.sidebar:
@@ -125,13 +157,15 @@ with st.sidebar:
         }
 
     st.header("💸 Financial Aid")
-    income_bracket = st.select_slider("Family Income Bracket", 
-                                      options=[
-                                          "<$65k (Scarlet Guarantee)",
-                                          "$65k-$100k",
-                                          "$100k-$150k",
-                                          ">$150k"
-                                      ])
+    income_bracket = st.select_slider(
+        "Family Income Bracket", 
+        options=[
+            "<$65k (Scarlet Guarantee)",
+            "$65k-$100k",
+            "$100k-$150k",
+            ">$150k"
+        ]
+    )
     scholarships = st.number_input("Annual Scarlet Promise/Merit Aid ($)", 0, 30000, 2000, step=500)
 
     st.header("🏠 Lifestyle & Work")
@@ -245,11 +279,11 @@ def parse_resume_text(text: str):
 
     return internships, certs, volunteering
 
-# --- MAIN LAYOUT: LEFT (import + experience) / RIGHT (settings) ---
+# --- MAIN LAYOUT ---
 left, right = st.columns([2.2, 0.8])
 
 with left:
-    # ----- IMPORT -----
+    # IMPORT
     st.subheader("🔗 Import from LinkedIn / Resume (Optional)")
 
     uploaded_file = st.file_uploader(
@@ -280,10 +314,9 @@ with left:
                 f"Parsed {len(ints)} experiences, {len(cs)} certifications, {len(vols)} volunteer roles."
             )
 
-    # ----- EXPERIENCE MANUAL / EDITABLE -----
+    # EXPERIENCE
     st.subheader("📈 Experience & Career Capital")
 
-    # Internships & Work Experience
     st.markdown("**Internships & Work Experience**")
     internship_tiers = [
         "Campus / Local",
@@ -326,7 +359,6 @@ with left:
             )
             internships.append({"company": company, "role": role, "tier": tier})
 
-    # Certifications
     st.markdown("**Certifications & Technical Credentials**")
     parsed_certs = st.session_state.get("parsed_certs", [])
     default_n_certs = len(parsed_certs)
@@ -358,7 +390,6 @@ with left:
             )
             certs.append({"name": cert_name, "impact": cert_impact})
 
-    # Volunteering / Leadership
     st.markdown("**Volunteer & Leadership Roles**")
     parsed_vols = st.session_state.get("parsed_volunteering", [])
     default_n_vol = len(parsed_vols)
@@ -432,11 +463,10 @@ def compute_experience_boost(internships, certs, volunteering):
     for v in volunteering:
         boost += leadership_weights.get(v.get("level"), 0.0)
 
-    return min(boost, 0.60)  # cap at +60%
+    return min(boost, 0.60)
 
 # --- CORE CALC ENGINE ---
 def calculate_rutgers_roi():
-    # yearly costs
     tuition = RUTGERS_COSTS["Tuition"][residency]
     fees = RUTGERS_COSTS["Mandatory Fees"]
     room_board = RUTGERS_COSTS["Housing"][housing] + RUTGERS_COSTS["Meal Plan"][meal_plan]
@@ -452,7 +482,6 @@ def calculate_rutgers_roi():
     total_yearly_cost = max(gross_cost - scholarships - side_income, 0)
     total_4yr_cost = total_yearly_cost * 4
 
-    # major stats
     if major_choice == "Custom Major / Input My Own":
         stats = custom_major_params
         major_label = "Custom Major"
@@ -462,9 +491,7 @@ def calculate_rutgers_roi():
 
     exp_boost = compute_experience_boost(internships, certs, volunteering)
 
-    # Monte Carlo
     npv_results = []
-
     for _ in range(sims):
         start = np.random.normal(stats["base"], stats["base"] * stats["risk"])
         start = max(start * (1 + exp_boost), 0)
@@ -473,7 +500,7 @@ def calculate_rutgers_roi():
         current_sal = start
 
         for y in range(time_horizon):
-            take_home = current_sal * 0.75  # crude after-tax factor
+            take_home = current_sal * 0.75
             career_cashflow += take_home / ((1 + discount_rate) ** y)
             current_sal *= (1 + stats["growth"])
 
@@ -525,7 +552,7 @@ st.table(summary_df)
 
 st.divider()
 
-# --- DISTRIBUTION PLOT ---
+# --- DISTRIBUTION PLOT (BLACK THEME) ---
 fig = go.Figure()
 fig.add_trace(go.Violin(
     x=results,
@@ -537,9 +564,12 @@ fig.add_trace(go.Violin(
 fig.update_layout(
     title=f"Probability Distribution of Career Value (NPV) over {time_horizon} Years",
     xaxis_title="Net Profit ($)",
-    template="none",
-    plot_bgcolor="white",
-    paper_bgcolor="white"
+    template="plotly_dark",
+    plot_bgcolor="#050505",
+    paper_bgcolor="#050505",
+    font_color="#f9fafb",
+    xaxis=dict(color="#f9fafb"),
+    yaxis=dict(color="#f9fafb")
 )
 st.plotly_chart(fig, use_container_width=True)
 
