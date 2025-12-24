@@ -3,12 +3,6 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 
-# Optional PDF parsing (for resume / LinkedIn PDF)
-try:
-    import pdfplumber
-except ImportError:
-    pdfplumber = None
-
 # --- 2025-2026 RUTGERS DATA REPOSITORY ---
 RUTGERS_COSTS = {
     "Tuition": {"NJ Resident": 16356, "Out-of-State": 34981},
@@ -132,7 +126,7 @@ st.markdown("""
 
 # --- TITLE ---
 st.title("🛡️ Rutgers Major ROI Calculator")
-st.write("v6.0 | Pure black & white with Rutgers red highlights")
+st.write("v6.1 | Black & white with Rutgers red – text-only resume import")
 
 # --- SIDEBAR: PROFILE / COSTS ---
 with st.sidebar:
@@ -179,22 +173,22 @@ with st.sidebar:
 # --- PARSING HELPERS ---
 
 def extract_text_from_file(uploaded_file):
+    """
+    Text-only. If user uploads PDF, we refuse and tell them to paste text.
+    """
     if uploaded_file is None:
         return ""
-    if uploaded_file.type == "text/plain":
+    name = uploaded_file.name.lower()
+    if name.endswith(".txt"):
         return uploaded_file.read().decode("utf-8", errors="ignore")
-    if uploaded_file.name.lower().endswith(".pdf"):
-        if pdfplumber is None:
-            st.warning("PDF parsing requires the 'pdfplumber' package. Add it to requirements.txt.")
-            return ""
-        text = ""
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
-        return text
+    if name.endswith(".pdf"):
+        st.warning("PDF parsing is disabled here. Export your LinkedIn/resume text and paste it below.")
+        return ""
+    # fallback: try decode anyway
     try:
         return uploaded_file.read().decode("utf-8", errors="ignore")
     except Exception:
+        st.warning("Could not read this file as text. Paste your resume content instead.")
         return ""
 
 def guess_tier_from_line(line: str) -> str:
@@ -287,8 +281,8 @@ with left:
     st.subheader("🔗 Import from LinkedIn / Resume (Optional)")
 
     uploaded_file = st.file_uploader(
-        "Upload your resume or LinkedIn 'Save as PDF' export",
-        type=["pdf", "txt"]
+        "Upload a .txt export of your resume / LinkedIn (PDFs not parsed here)",
+        type=["txt", "pdf"]
     )
     resume_text_manual = st.text_area(
         "…or paste your resume / LinkedIn text here",
@@ -303,7 +297,7 @@ with left:
         elif resume_text_manual.strip():
             raw_text = resume_text_manual
         else:
-            st.warning("Provide a file or paste your resume text first.")
+            st.warning("Provide a text file or paste your resume content first.")
         
         if raw_text:
             ints, cs, vols = parse_resume_text(raw_text)
