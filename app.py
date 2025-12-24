@@ -31,9 +31,7 @@ st.set_page_config(page_title="RU-Invested 2025", page_icon="📈", layout="wide
 st.markdown("""
     <style>
     /* Main background */
-    .stApp {
-        background-color: #f8f9fa;
-    }
+    .stApp { background-color: #f8f9fa; }
     
     /* Metric Card Styling */
     [data-testid="stMetric"] {
@@ -45,18 +43,26 @@ st.markdown("""
     }
 
     /* Force metric text to be Black */
-    [data-testid="stMetricValue"] {
+    [data-testid="stMetricValue"] { color: #1c1c1c !important; }
+    [data-testid="stMetricLabel"] { color: #58595b !important; }
+
+    /* FIXING THE TABLE/EXPANDER DATA VISIBILITY */
+    .stTable, [data-testid="stTable"] {
+        background-color: #ffffff !important;
         color: #1c1c1c !important;
+        border-radius: 8px;
     }
     
-    /* Force metric label (title) to be Dark Gray */
-    [data-testid="stMetricLabel"] {
-        color: #58595b !important;
+    /* Ensuring Table Cell text is black */
+    [data-testid="stTable"] td, [data-testid="stTable"] th {
+        color: #1c1c1c !important;
     }
 
-    /* Rutgers Red for Sidebar titles */
-    .css-10trblm {
-        color: #cc0033;
+    /* Styling the Expander Header */
+    .streamlit-expanderHeader {
+        background-color: #ffffff !important;
+        color: #1c1c1c !important;
+        border-radius: 8px;
     }
     </style>
     """, unsafe_allow_html=True)
