@@ -31,9 +31,14 @@ st.set_page_config(page_title="RU-Invested 2025", page_icon="📈", layout="wide
 st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .stMetric { 
+        background-color: #ffffff; 
+        padding: 15px; 
+        border-radius: 10px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    }
     </style>
-    """, unsafe_whitespace=True)
+    """, unsafe_allow_html=True) # Changed from unsafe_whitespace
 
 st.title("🛡️ RU-Invested: The Universal Rutgers ROI Engine")
 st.caption("v2.5 | Integrated 2025 Salary Benchmarks | Monte Carlo Simulation")
